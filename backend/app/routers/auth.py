@@ -1,6 +1,6 @@
 """Authentication endpoints: register, login, me, refresh."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,8 @@ from app.auth import (
 )
 from app.database import get_db
 from app.models.user import User
+from app.password_validator import validate_password_strength
+from app.rate_limit import auth_rate_limiter
 from app.schemas.auth import (
     LoginRequest,
     RefreshRequest,
@@ -27,7 +29,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, session: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, request: Request, session: AsyncSession = Depends(get_db)):
+    auth_rate_limiter.check(request)
+
     # Check if email already exists
     result = await session.execute(
         select(User).where(User.email == body.email)
@@ -38,10 +42,11 @@ async def register(body: RegisterRequest, session: AsyncSession = Depends(get_db
             detail="Email already registered",
         )
 
-    if len(body.password) < 6:
+    is_valid, error_msg = validate_password_strength(body.password)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Password must be at least 6 characters",
+            detail=error_msg,
         )
 
     user = User(
@@ -56,7 +61,9 @@ async def register(body: RegisterRequest, session: AsyncSession = Depends(get_db
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, session: AsyncSession = Depends(get_db)):
+async def login(body: LoginRequest, request: Request, session: AsyncSession = Depends(get_db)):
+    auth_rate_limiter.check(request)
+
     result = await session.execute(
         select(User).where(User.email == body.email)
     )
@@ -88,10 +95,11 @@ async def update_me(
     if body.display_name is not None:
         current_user.display_name = body.display_name
     if body.password is not None:
-        if len(body.password) < 6:
+        is_valid, error_msg = validate_password_strength(body.password)
+        if not is_valid:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Password must be at least 6 characters",
+                detail=error_msg,
             )
         current_user.password_hash = await hash_password(body.password)
 
