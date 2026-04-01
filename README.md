@@ -18,7 +18,7 @@
 - **自动平衡** — 资产负债表不平衡时自动通过短期借款（Debt Plug）补齐差额
 - **报表导出** — 支持 Excel (.xlsx) 和 HTML 报告导出
 - **中英文切换** — 默认中文，一键切换英文，所有页面完整国际化
-- **JWT 认证** — 用户注册/登录，数据按用户隔离
+- **安全认证** — JWT 认证 + 强密码策略 + 速率限制 + CORS 保护，数据按用户隔离
 
 ## 技术栈
 
@@ -27,7 +27,7 @@
 | 后端    | Python 3.12 · FastAPI · SQLAlchemy 2.0 (async) · Alembic |
 | 前端    | React 19 · TypeScript · Vite · Ant Design 6 |
 | 数据库  | PostgreSQL (asyncpg / psycopg) |
-| 认证    | JWT (python-jose) · PBKDF2-SHA256 |
+| 安全    | JWT (python-jose) · PBKDF2-SHA256 · 速率限制 · CORS 保护 |
 | 国际化  | react-i18next · Ant Design locale |
 | 导出    | openpyxl (Excel) · HTML 报告 |
 
